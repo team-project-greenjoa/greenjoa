@@ -29,6 +29,9 @@ public:
 
 private:
     void drawBlockCells(const Tetromino& block, const std::string& cellText);
+    void showRandomLogoBlocks();
+    void clearLogoBlockArea();
+    Tetromino makeRandomLogoBlock(Position position) const;
     void printAt(int x, int y, const std::string& text);
     Position toScreenPosition(int boardX, int boardY) const;
 

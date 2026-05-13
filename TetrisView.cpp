@@ -1,6 +1,8 @@
 #include "TetrisView.h"
 
+#include <array>
 #include <iomanip>
+#include <random>
 #include <sstream>
 
 namespace tetris {
@@ -12,6 +14,12 @@ constexpr int kStatusLabelX = 35;
 constexpr int kStatusValueX = 41;
 constexpr int kCursorSafeX = 77;
 constexpr int kCursorSafeY = 23;
+constexpr int kLogoAnimationIntervalTicks = 40;
+constexpr int kLogoBlockClearX = 17;
+constexpr int kLogoBlockClearY = 14;
+constexpr int kLogoBlockClearRows = 5;
+constexpr int kLogoBlockClearWidth = 58;
+constexpr std::array<Position, 4> kLogoBlockPositions{{{6, 14}, {12, 14}, {19, 14}, {24, 14}}};
 }  // namespace
 
 TetrisView::TetrisView(IRenderer& renderer) : renderer_(renderer) {}
@@ -31,7 +39,16 @@ void TetrisView::showLogo(IInputProvider& input, const StageRepository&) {
     renderer_.sleep(constants::kLogoSleepMs);
     printAt(13, 9, "┗━━━━━━━━━━━━━━━━━━━━━━━┛");
     printAt(28, 20, "Please Press Any Key~!");
-    renderer_.flush();
+
+    for (int tick = 0; !input.hasKey(); ++tick) {
+        if (tick % kLogoAnimationIntervalTicks == 0) {
+            clearLogoBlockArea();
+            showRandomLogoBlocks();
+        }
+        renderer_.flush();
+        renderer_.sleep(constants::kLogoAnimationSleepMs);
+    }
+
     input.waitForAnyKey();
     renderer_.clear();
 }
@@ -154,6 +171,27 @@ void TetrisView::drawBlockCells(const Tetromino& block, const std::string& cellT
             printAt(screen.x, screen.y, cellText);
         }
     }
+}
+
+void TetrisView::showRandomLogoBlocks() {
+    for (const Position position : kLogoBlockPositions) {
+        showCurrentBlock(makeRandomLogoBlock(position));
+    }
+}
+
+void TetrisView::clearLogoBlockArea() {
+    for (int row = 0; row < kLogoBlockClearRows; ++row) {
+        printAt(kLogoBlockClearX, kLogoBlockClearY + row, std::string(kLogoBlockClearWidth, ' '));
+    }
+}
+
+Tetromino TetrisView::makeRandomLogoBlock(Position position) const {
+    static std::random_device seedSource;
+    static std::mt19937 engine(seedSource());
+    std::uniform_int_distribution<int> shapeDistribution(0, constants::kTetrominoCount - 1);
+    std::uniform_int_distribution<int> rotationDistribution(0, constants::kRotationCount - 1);
+
+    return Tetromino{static_cast<TetrominoShape>(shapeDistribution(engine)), rotationDistribution(engine), position};
 }
 
 void TetrisView::printAt(int x, int y, const std::string& text) {

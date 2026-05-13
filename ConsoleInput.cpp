@@ -112,14 +112,13 @@ void ConsoleInput::waitForAnyKey() {
     _getch();
 #else
     if (!terminalConfigured_) {
-        char ignored = 0;
-        std::cin.get(ignored);
-        return;
+        configureTerminal();
     }
     while (!hasKey()) {
         usleep(10000);
     }
     (void)readKey();
+    restoreTerminal();
 #endif
 }
 
@@ -140,6 +139,7 @@ void ConsoleInput::configureTerminal() {
 void ConsoleInput::restoreTerminal() {
     if (terminalConfigured_) {
         tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminal_);
+        terminalConfigured_ = false;
     }
 }
 #endif
