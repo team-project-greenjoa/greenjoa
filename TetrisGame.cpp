@@ -66,6 +66,7 @@ void TetrisGame::runRoundLoop() {
 
         if (!gameOver_) {
             updateStageIfNeeded();
+            view_.showCurrentBlock(currentBlock_);
             view_.moveCursorOutOfGameArea();
             view_.sleep(constants::kGameLoopSleepMs);
             ++tick;
@@ -100,7 +101,6 @@ MoveResult TetrisGame::moveCurrentBlockDown() {
     view_.eraseCurrentBlock(currentBlock_);
     currentBlock_.moveBy(0, 1);
     if (!board_.isCollision(currentBlock_)) {
-        view_.showCurrentBlock(currentBlock_);
         return MoveResult::Moved;
     }
 
@@ -154,7 +154,6 @@ void TetrisGame::lockCurrentBlockAndSpawnNext() {
     nextShape_ = blockGenerator_.makeNextShape(currentStage());
     view_.showNextBlock(nextShape_, stats_.getLevel());
     view_.showGameStats(stats_, currentStage(), false);
-    view_.showCurrentBlock(currentBlock_);
 }
 
 void TetrisGame::updateStageIfNeeded() {

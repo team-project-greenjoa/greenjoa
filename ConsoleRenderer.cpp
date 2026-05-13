@@ -11,10 +11,6 @@
 
 namespace tetris {
 
-ConsoleRenderer::ConsoleRenderer() { setCursorVisible(false); }
-
-ConsoleRenderer::~ConsoleRenderer() { setCursorVisible(true); }
-
 void ConsoleRenderer::moveCursor(int x, int y) {
 #ifdef _WIN32
     HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -82,19 +78,5 @@ void ConsoleRenderer::clear() {
 void ConsoleRenderer::flush() { std::cout.flush(); }
 
 void ConsoleRenderer::sleep(int milliseconds) { std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds)); }
-
-void ConsoleRenderer::setCursorVisible(bool visible) {
-#ifdef _WIN32
-    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_CURSOR_INFO cursorInfo{};
-    if (GetConsoleCursorInfo(console, &cursorInfo) != 0) {
-        cursorInfo.bVisible = visible ? TRUE : FALSE;
-        SetConsoleCursorInfo(console, &cursorInfo);
-    }
-#else
-    std::cout << (visible ? "\033[?25h" : "\033[?25l");
-    std::cout.flush();
-#endif
-}
 
 }  // namespace tetris
