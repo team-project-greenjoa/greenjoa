@@ -5,7 +5,8 @@ classDiagram
     class TetrisGame {
         -Board board_
         -GameStats stats_
-        -StageRepository stageRepository_
+        -StageManager stageManager_
+        -RandomBlockGenerator blockGenerator_
         -Tetromino currentBlock_
         -TetrominoShape nextShape_
         -bool gameOver_
@@ -17,9 +18,11 @@ classDiagram
     class Board {
         -Grid grid_
         +reset() void
+        +isFilled(int, int) bool
         +isCollision(Tetromino) bool
         +merge(Tetromino) void
-        +clearFullLines() int
+        +findFullLines() vector~int~
+        +clearLines(vector~int~) void
     }
 
     class Tetromino {
@@ -37,17 +40,20 @@ classDiagram
     }
 
     class GameStats {
-        -int level_
         -int score_
         -int linesInCurrentStage_
         +addLines(int) void
         +addScore(int) void
-        +nextLevel() void
+        +resetStageLines() void
     }
 
-    class StageRepository {
+    class StageManager {
         -array~StageConfig~ stages_
-        +getStage(int) StageConfig
+        -int currentLevel_
+        +setLevel(int) void
+        +getLevel() int
+        +currentStage() StageConfig
+        +levelUp() void
     }
 
     class StageConfig {
@@ -56,12 +62,20 @@ classDiagram
         -int clearLineGoal_
     }
 
+    class RandomBlockGenerator {
+        -mt19937 engine_
+        +makeNextShape(StageConfig) TetrominoShape
+        +nextScoreBonus(int) int
+    }
+
     class TetrisView {
         -IRenderer renderer_
+        +showLogo(IInputProvider) void
         +showBoard(Board, int) void
         +showCurrentBlock(Tetromino) void
         +showNextBlock(TetrominoShape, int) void
-        +showGameStats(GameStats, StageConfig, bool) void
+        +showGameStats(GameStats, StageManager, bool) void
+        +showLineClearAnimation(int) void
     }
 
     class IRenderer {
@@ -70,9 +84,12 @@ classDiagram
         +setColor(ConsoleColor) void
         +write(string) void
         +clear() void
+        +flush() void
+        +sleep(int) void
     }
 
     class ConsoleRenderer
+
     class IInputProvider {
         <<interface>>
         +hasKey() bool
@@ -81,32 +98,27 @@ classDiagram
     }
 
     class ConsoleInput
-    class IBlockGenerator {
-        <<interface>>
-        +makeNextShape(StageConfig) TetrominoShape
-        +nextScoreBonus(int) int
-    }
-
-    class RandomBlockGenerator
 
     TetrisGame *-- Board
     TetrisGame *-- GameStats
-    TetrisGame *-- StageRepository
+    TetrisGame *-- StageManager
     TetrisGame *-- Tetromino
+    TetrisGame o-- RandomBlockGenerator
     TetrisGame o-- TetrisView
     TetrisGame o-- IInputProvider
-    TetrisGame o-- IBlockGenerator
     TetrisView o-- IRenderer
     ConsoleRenderer ..|> IRenderer
     ConsoleInput ..|> IInputProvider
-    RandomBlockGenerator ..|> IBlockGenerator
-    StageRepository *-- StageConfig
+    StageManager *-- StageConfig
     Tetromino ..> TetrominoData
 ```
 
-## Reuse-focused design notes
+## Design notes for the OOP assignment
 
-- `IRenderer`, `IInputProvider`, and `IBlockGenerator` are pure abstract interfaces, so console rendering, input, and block generation can be replaced in another project without changing `TetrisGame`.
-- `Board`, `Tetromino`, `GameStats`, and `StageRepository` each own a single responsibility and keep data private behind focused public methods.
-- `TetrisGame` composes reusable components instead of depending on global variables.
-- Gameplay constants are centralized in `GameConstants.h` to remove hard-coded magic numbers from the core logic.
+- `TetrisGame` controls the overall game flow, while `Board`, `Tetromino`, `GameStats`, and `StageManager` each manage one clear part of the game state.
+- Member variables are kept private, and each class exposes only the methods needed by the rest of the program.
+- `IRenderer` and `IInputProvider` remain as simple interface examples for inheritance and polymorphism. `ConsoleRenderer` and `ConsoleInput` provide the Windows console implementations.
+- `RandomBlockGenerator` is a normal helper class instead of a separate interface, which keeps the project easier to explain at an undergraduate OOP assignment level.
+- `Board` exposes `isFilled(row, col)` instead of exposing its full internal grid to the view.
+- Full-line handling is split into `findFullLines()` and `clearLines()` so `TetrisGame` can show the line-clear animation before removing lines.
+- The project is intentionally Windows-console-only. Platform-specific input and rendering code uses `conio.h`, `Windows.h`, `_kbhit()`, `_getch()`, `SetConsoleCursorPosition()`, and `SetConsoleTextAttribute()` inside `ConsoleInput` and `ConsoleRenderer`.

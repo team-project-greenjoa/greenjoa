@@ -2,16 +2,17 @@
 #define RANDOM_BLOCK_GENERATOR_H
 
 #include <random>
-#include "IBlockGenerator.h"
+#include "Stage.h"
+#include "Tetromino.h"
 
 namespace tetris {
 
-class RandomBlockGenerator : public IBlockGenerator {
+class RandomBlockGenerator {
 public:
     RandomBlockGenerator();
 
-    TetrominoShape makeNextShape(const StageConfig& stage) override;
-    int nextScoreBonus(int exclusiveUpperBound) override;
+    TetrominoShape makeNextShape(const StageConfig& stage);
+    int nextScoreBonus(int exclusiveUpperBound);
 
 private:
     std::mt19937 engine_;
