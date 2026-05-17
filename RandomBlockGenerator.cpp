@@ -9,7 +9,7 @@ RandomBlockGenerator::RandomBlockGenerator()
 
 TetrominoShape RandomBlockGenerator::makeNextShape(const StageConfig& stage) {
     std::uniform_int_distribution<int> percent(0, 99);
-    if (percent(engine_) <= stage.getStickRate()) {
+    if (percent(engine_) < stage.getStickRate()) {
         return TetrominoShape::I;
     }
 

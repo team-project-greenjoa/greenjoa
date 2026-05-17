@@ -13,14 +13,14 @@ class TetrisView {
 public:
     explicit TetrisView(IRenderer& renderer);
 
-    void showLogo(IInputProvider& input, const StageRepository& stages);
+    void showLogo(IInputProvider& input);
     void showStartGuide();
     void showLevelPrompt();
     void showBoard(const Board& board, int level);
     void showCurrentBlock(const Tetromino& block);
     void eraseCurrentBlock(const Tetromino& block);
     void showNextBlock(TetrominoShape shape, int level);
-    void showGameStats(const GameStats& stats, const StageConfig& stage, bool printLabels);
+    void showGameStats(const GameStats& stats, const StageManager& stageManager, bool printLabels);
     void showLineClearAnimation(int row);
     void showGameOver();
     void moveCursorOutOfGameArea();

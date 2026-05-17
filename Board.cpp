@@ -12,7 +12,7 @@ void Board::reset() {
     }
 }
 
-bool Board::hasFixedBlock(int row, int col) const {
+bool Board::isFilled(int row, int col) const {
     if (!isInsideGrid(row, col)) {
         return true;
     }
@@ -35,7 +35,7 @@ bool Board::isCollision(const Tetromino& tetromino) const {
                 }
                 continue;
             }
-            if (hasFixedBlock(boardRow, boardCol)) {
+            if (isFilled(boardRow, boardCol)) {
                 return true;
             }
         }
@@ -59,8 +59,8 @@ void Board::merge(const Tetromino& tetromino) {
     }
 }
 
-int Board::clearFullLines() {
-    int clearedLines = 0;
+std::vector<int> Board::findFullLines() const {
+    std::vector<int> fullLines;
     for (int row = 0; row < constants::kVisibleRows; ++row) {
         bool full = true;
         for (int col = constants::kPlayableLeftCol; col <= constants::kPlayableRightCol; ++col) {
@@ -69,25 +69,18 @@ int Board::clearFullLines() {
                 break;
             }
         }
-
-        if (!full) {
-            continue;
-        }
-
-        ++clearedLines;
-        for (int pullRow = row; pullRow > 0; --pullRow) {
-            for (int col = constants::kPlayableLeftCol; col <= constants::kPlayableRightCol; ++col) {
-                grid_[pullRow][col] = grid_[pullRow - 1][col];
-            }
-        }
-        for (int col = constants::kPlayableLeftCol; col <= constants::kPlayableRightCol; ++col) {
-            grid_[0][col] = 0;
+        if (full) {
+            fullLines.push_back(row);
         }
     }
-    return clearedLines;
+    return fullLines;
 }
 
-const Board::Grid& Board::getGrid() const { return grid_; }
+void Board::clearLines(const std::vector<int>& rows) {
+    for (int row : rows) {
+        clearSingleLine(row);
+    }
+}
 
 bool Board::isWallOrFloor(int row, int col) const {
     return col == constants::kLeftWallCol || col == constants::kRightWallCol || row == constants::kBottomRow;
@@ -95,6 +88,17 @@ bool Board::isWallOrFloor(int row, int col) const {
 
 bool Board::isInsideGrid(int row, int col) const {
     return row >= 0 && row < constants::kBoardRows && col >= 0 && col < constants::kBoardCols;
+}
+
+void Board::clearSingleLine(int row) {
+    for (int pullRow = row; pullRow > 0; --pullRow) {
+        for (int col = constants::kPlayableLeftCol; col <= constants::kPlayableRightCol; ++col) {
+            grid_[pullRow][col] = grid_[pullRow - 1][col];
+        }
+    }
+    for (int col = constants::kPlayableLeftCol; col <= constants::kPlayableRightCol; ++col) {
+        grid_[0][col] = 0;
+    }
 }
 
 }  // namespace tetris

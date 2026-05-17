@@ -20,15 +20,20 @@ private:
     int clearLineGoal_;
 };
 
-class StageRepository {
+class StageManager {
 public:
-    StageRepository();
+    StageManager();
 
-    const StageConfig& getStage(int level) const;
+    void setLevel(int level);
+    int getLevel() const;
+    bool isLastStage() const;
+    void levelUp();
+    const StageConfig& currentStage() const;
     int getLastStageIndex() const;
 
 private:
     std::array<StageConfig, constants::kStageCount> stages_;
+    int currentLevel_ = 0;
 };
 
 }  // namespace tetris

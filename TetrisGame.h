@@ -3,8 +3,8 @@
 
 #include "Board.h"
 #include "GameStats.h"
-#include "IBlockGenerator.h"
 #include "IInputProvider.h"
+#include "RandomBlockGenerator.h"
 #include "Stage.h"
 #include "TetrisView.h"
 
@@ -18,7 +18,7 @@ enum class MoveResult {
 
 class TetrisGame {
 public:
-    TetrisGame(TetrisView& view, IInputProvider& input, IBlockGenerator& blockGenerator);
+    TetrisGame(TetrisView& view, IInputProvider& input, RandomBlockGenerator& blockGenerator);
 
     void run();
 
@@ -27,11 +27,11 @@ private:
     int readStartLevel();
     void startRound();
     void runRoundLoop();
-    void handleInput(GameKey key);
+    bool handleInput(GameKey key);
     MoveResult moveCurrentBlockDown();
-    void moveCurrentBlockHorizontally(int deltaX);
-    void rotateCurrentBlock();
-    void hardDropCurrentBlock();
+    bool moveCurrentBlockHorizontally(int deltaX);
+    bool rotateCurrentBlock();
+    bool hardDropCurrentBlock();
     void lockCurrentBlockAndSpawnNext();
     void updateStageIfNeeded();
     void addLineClearScore(int clearedLineCount);
@@ -40,8 +40,8 @@ private:
 
     TetrisView& view_;
     IInputProvider& input_;
-    IBlockGenerator& blockGenerator_;
-    StageRepository stageRepository_;
+    RandomBlockGenerator& blockGenerator_;
+    StageManager stageManager_;
     Board board_;
     GameStats stats_;
     Tetromino currentBlock_{TetrominoShape::I};

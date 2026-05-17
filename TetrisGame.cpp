@@ -2,17 +2,18 @@
 
 #include <iostream>
 #include <limits>
+#include <vector>
 
 namespace tetris {
 
-TetrisGame::TetrisGame(TetrisView& view, IInputProvider& input, IBlockGenerator& blockGenerator)
+TetrisGame::TetrisGame(TetrisView& view, IInputProvider& input, RandomBlockGenerator& blockGenerator)
     : view_(view), input_(input), blockGenerator_(blockGenerator) {}
 
 void TetrisGame::run() {
-    view_.showLogo(input_, stageRepository_);
+    view_.showLogo(input_);
     while (true) {
         resetGameState();
-        stats_.setLevel(readStartLevel() - 1);
+        stageManager_.setLevel(readStartLevel() - 1);
         startRound();
         runRoundLoop();
         view_.showGameOver();
@@ -30,6 +31,7 @@ void TetrisGame::resetGameState() {
 int TetrisGame::readStartLevel() {
     int level = 0;
     view_.showStartGuide();
+    // Initial setup input is kept here to keep the project simple for an OOP class assignment.
     while (level < constants::kSelectableMinLevel || level > constants::kSelectableMaxLevel) {
         view_.showLevelPrompt();
         std::cin >> level;
@@ -45,28 +47,33 @@ int TetrisGame::readStartLevel() {
 }
 
 void TetrisGame::startRound() {
-    view_.showBoard(board_, stats_.getLevel());
+    view_.showBoard(board_, stageManager_.getLevel());
     currentBlock_ = createSpawnBlock(blockGenerator_.makeNextShape(currentStage()));
     nextShape_ = blockGenerator_.makeNextShape(currentStage());
-    view_.showNextBlock(nextShape_, stats_.getLevel());
-    view_.showGameStats(stats_, currentStage(), true);
+    view_.showNextBlock(nextShape_, stageManager_.getLevel());
+    view_.showGameStats(stats_, stageManager_, true);
     view_.showCurrentBlock(currentBlock_);
 }
 
 void TetrisGame::runRoundLoop() {
     int tick = 1;
     while (!gameOver_) {
+        bool shouldRenderCurrentBlock = false;
         if (input_.hasKey()) {
-            handleInput(input_.readKey());
+            shouldRenderCurrentBlock = handleInput(input_.readKey());
         }
 
         if (!gameOver_ && tick % currentStage().getSpeed() == 0) {
-            gameOver_ = moveCurrentBlockDown() == MoveResult::GameOver;
+            const MoveResult result = moveCurrentBlockDown();
+            gameOver_ = result == MoveResult::GameOver;
+            shouldRenderCurrentBlock = shouldRenderCurrentBlock || result != MoveResult::GameOver;
         }
 
         if (!gameOver_) {
             updateStageIfNeeded();
-            view_.showCurrentBlock(currentBlock_);
+            if (shouldRenderCurrentBlock) {
+                view_.showCurrentBlock(currentBlock_);
+            }
             view_.moveCursorOutOfGameArea();
             view_.sleep(constants::kGameLoopSleepMs);
             ++tick;
@@ -74,27 +81,26 @@ void TetrisGame::runRoundLoop() {
     }
 }
 
-void TetrisGame::handleInput(GameKey key) {
+bool TetrisGame::handleInput(GameKey key) {
     switch (key) {
         case GameKey::Rotate:
-            rotateCurrentBlock();
-            break;
+            return rotateCurrentBlock();
         case GameKey::Left:
-            moveCurrentBlockHorizontally(-1);
-            break;
+            return moveCurrentBlockHorizontally(-1);
         case GameKey::Right:
-            moveCurrentBlockHorizontally(1);
-            break;
-        case GameKey::Down:
-            gameOver_ = moveCurrentBlockDown() == MoveResult::GameOver;
-            break;
+            return moveCurrentBlockHorizontally(1);
+        case GameKey::Down: {
+            const MoveResult result = moveCurrentBlockDown();
+            gameOver_ = result == MoveResult::GameOver;
+            return result != MoveResult::GameOver;
+        }
         case GameKey::Drop:
-            hardDropCurrentBlock();
-            break;
+            return hardDropCurrentBlock();
         case GameKey::None:
         case GameKey::Any:
             break;
     }
+    return false;
 }
 
 MoveResult TetrisGame::moveCurrentBlockDown() {
@@ -113,65 +119,72 @@ MoveResult TetrisGame::moveCurrentBlockDown() {
     return MoveResult::Locked;
 }
 
-void TetrisGame::moveCurrentBlockHorizontally(int deltaX) {
+bool TetrisGame::moveCurrentBlockHorizontally(int deltaX) {
     view_.eraseCurrentBlock(currentBlock_);
     currentBlock_.moveBy(deltaX, 0);
     if (board_.isCollision(currentBlock_)) {
         currentBlock_.moveBy(-deltaX, 0);
     }
-    view_.showCurrentBlock(currentBlock_);
+    return true;
 }
 
-void TetrisGame::rotateCurrentBlock() {
+bool TetrisGame::rotateCurrentBlock() {
     view_.eraseCurrentBlock(currentBlock_);
     currentBlock_.rotateClockwise();
     if (board_.isCollision(currentBlock_)) {
         currentBlock_.setRotation(currentBlock_.getRotation() - 1);
     }
-    view_.showCurrentBlock(currentBlock_);
+    return true;
 }
 
-void TetrisGame::hardDropCurrentBlock() {
+bool TetrisGame::hardDropCurrentBlock() {
     MoveResult result = MoveResult::Moved;
     while (result == MoveResult::Moved) {
         result = moveCurrentBlockDown();
     }
     gameOver_ = result == MoveResult::GameOver;
-    if (!gameOver_) {
-        view_.showCurrentBlock(currentBlock_);
-    }
+    return !gameOver_;
 }
 
 void TetrisGame::lockCurrentBlockAndSpawnNext() {
     board_.merge(currentBlock_);
-    const int clearedLineCount = board_.clearFullLines();
+    const std::vector<int> fullLines = board_.findFullLines();
+    if (!fullLines.empty()) {
+        view_.showBoard(board_, stageManager_.getLevel());
+    }
+    for (int row : fullLines) {
+        view_.showLineClearAnimation(row);
+    }
+    board_.clearLines(fullLines);
+
+    const int clearedLineCount = static_cast<int>(fullLines.size());
     if (clearedLineCount > 0) {
         stats_.addLines(clearedLineCount);
         addLineClearScore(clearedLineCount);
     }
-    view_.showBoard(board_, stats_.getLevel());
+    view_.showBoard(board_, stageManager_.getLevel());
     currentBlock_ = createSpawnBlock(nextShape_);
     nextShape_ = blockGenerator_.makeNextShape(currentStage());
-    view_.showNextBlock(nextShape_, stats_.getLevel());
-    view_.showGameStats(stats_, currentStage(), false);
+    view_.showNextBlock(nextShape_, stageManager_.getLevel());
+    view_.showGameStats(stats_, stageManager_, false);
 }
 
 void TetrisGame::updateStageIfNeeded() {
     if (stats_.getLinesInCurrentStage() < currentStage().getClearLineGoal()) {
         return;
     }
-    if (stats_.getLevel() < stageRepository_.getLastStageIndex()) {
-        stats_.nextLevel();
+    if (!stageManager_.isLastStage()) {
+        stageManager_.levelUp();
         stats_.resetStageLines();
-        view_.showBoard(board_, stats_.getLevel());
-        view_.showNextBlock(nextShape_, stats_.getLevel());
-        view_.showGameStats(stats_, currentStage(), false);
+        view_.showBoard(board_, stageManager_.getLevel());
+        view_.showNextBlock(nextShape_, stageManager_.getLevel());
+        view_.showGameStats(stats_, stageManager_, false);
     }
 }
 
 void TetrisGame::addLineClearScore(int clearedLineCount) {
     for (int i = 0; i < clearedLineCount; ++i) {
-        stats_.addScore(constants::kScoreBase + (stats_.getLevel() * constants::kScorePerLevel) +
+        stats_.addScore(constants::kScoreBase + (stageManager_.getLevel() * constants::kScorePerLevel) +
                         blockGenerator_.nextScoreBonus(constants::kScoreRandomBonusExclusive));
     }
 }
@@ -180,6 +193,6 @@ Tetromino TetrisGame::createSpawnBlock(TetrominoShape shape) const {
     return Tetromino{shape, 0, {constants::kStartBlockX, constants::kStartBlockY}};
 }
 
-const StageConfig& TetrisGame::currentStage() const { return stageRepository_.getStage(stats_.getLevel()); }
+const StageConfig& TetrisGame::currentStage() const { return stageManager_.currentStage(); }
 
 }  // namespace tetris

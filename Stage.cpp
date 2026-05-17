@@ -13,17 +13,26 @@ int StageConfig::getStickRate() const { return stickRate_; }
 
 int StageConfig::getClearLineGoal() const { return clearLineGoal_; }
 
-StageRepository::StageRepository()
+StageManager::StageManager()
     : stages_{StageConfig{40, 20, 20}, StageConfig{38, 18, 20}, StageConfig{35, 18, 20},
               StageConfig{30, 17, 20}, StageConfig{25, 16, 20}, StageConfig{20, 14, 20},
               StageConfig{15, 14, 20}, StageConfig{10, 13, 20}, StageConfig{6, 12, 20},
               StageConfig{4, 11, 99999}} {}
 
-const StageConfig& StageRepository::getStage(int level) const {
-    const int safeLevel = std::clamp(level, 0, getLastStageIndex());
-    return stages_[safeLevel];
+void StageManager::setLevel(int level) { currentLevel_ = std::clamp(level, 0, getLastStageIndex()); }
+
+int StageManager::getLevel() const { return currentLevel_; }
+
+bool StageManager::isLastStage() const { return currentLevel_ >= getLastStageIndex(); }
+
+void StageManager::levelUp() {
+    if (!isLastStage()) {
+        ++currentLevel_;
+    }
 }
 
-int StageRepository::getLastStageIndex() const { return static_cast<int>(stages_.size()) - 1; }
+const StageConfig& StageManager::currentStage() const { return stages_[currentLevel_]; }
+
+int StageManager::getLastStageIndex() const { return static_cast<int>(stages_.size()) - 1; }
 
 }  // namespace tetris

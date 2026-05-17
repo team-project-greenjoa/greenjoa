@@ -24,7 +24,7 @@ constexpr std::array<Position, 4> kLogoBlockPositions{{{6, 14}, {12, 14}, {19, 1
 
 TetrisView::TetrisView(IRenderer& renderer) : renderer_(renderer) {}
 
-void TetrisView::showLogo(IInputProvider& input, const StageRepository&) {
+void TetrisView::showLogo(IInputProvider& input) {
     printAt(13, 3, "┏━━━━━━━━━━━━━━━━━━━━━━━┓");
     renderer_.sleep(constants::kLogoSleepMs);
     printAt(13, 4, "┃◆◆◆  ◆◆◆  ◆◆◆   ◆◆     ◆   ◆◆◆ ┃");
@@ -73,14 +73,13 @@ void TetrisView::showLevelPrompt() {
 }
 
 void TetrisView::showBoard(const Board& board, int level) {
-    const auto& grid = board.getGrid();
     for (int row = 0; row < constants::kBoardRows; ++row) {
         for (int col = 0; col < constants::kBoardCols; ++col) {
             const bool wallOrFloor = col == constants::kLeftWallCol || col == constants::kRightWallCol ||
                                      row == constants::kBottomRow;
             renderer_.setColor(wallOrFloor ? static_cast<ConsoleColor>((level % 6) + 1) : ConsoleColor::DarkGray);
             const Position screen = toScreenPosition(col, row);
-            printAt(screen.x, screen.y, grid[row][col] == 1 ? kFilledCell : kEmptyCell);
+            printAt(screen.x, screen.y, board.isFilled(row, col) ? kFilledCell : kEmptyCell);
         }
     }
     renderer_.setColor(ConsoleColor::Black);
@@ -109,7 +108,7 @@ void TetrisView::showNextBlock(TetrominoShape shape, int level) {
     showCurrentBlock(Tetromino{shape, 0, {constants::kPreviewBlockX, constants::kPreviewBlockY}});
 }
 
-void TetrisView::showGameStats(const GameStats& stats, const StageConfig& stage, bool printLabels) {
+void TetrisView::showGameStats(const GameStats& stats, const StageManager& stageManager, bool printLabels) {
     renderer_.setColor(ConsoleColor::Gray);
     if (printLabels) {
         printAt(kStatusLabelX, 7, "STAGE");
@@ -120,9 +119,10 @@ void TetrisView::showGameStats(const GameStats& stats, const StageConfig& stage,
     std::ostringstream scoreText;
     scoreText << std::setw(10) << stats.getScore();
     std::ostringstream remainingLineText;
-    remainingLineText << std::setw(10) << (stage.getClearLineGoal() - stats.getLinesInCurrentStage());
+    remainingLineText << std::setw(10)
+                      << (stageManager.currentStage().getClearLineGoal() - stats.getLinesInCurrentStage());
 
-    printAt(kStatusValueX, 7, std::to_string(stats.getLevel() + 1));
+    printAt(kStatusValueX, 7, std::to_string(stageManager.getLevel() + 1));
     printAt(kStatusLabelX, 10, scoreText.str());
     printAt(kStatusLabelX, 13, remainingLineText.str());
     renderer_.flush();
